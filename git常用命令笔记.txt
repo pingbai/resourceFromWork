@@ -1,0 +1,105 @@
+1	新建一个仓库，并且该仓库应该是git类型
+	1.1	git init新建git类型的仓库
+
+2	新建文件并放入git仓库
+	2.1	touch a.txt   touch a.txt或者vi
+	2.2	git add 将新建的a.txt纳入git管理
+	2.3	git status,查看文件在git仓库中的状态
+	2.4	git commit -m "提交修改的信息说明",完成了首次提交
+	2.5	新增文件内容，再次尝试提交。
+
+3	git的日志和跟踪管理
+	3.1	git log,查看每次操作的日志情况。
+		git log --pretty=oneline可以一行显示，查看关键信息
+	3.2	git diff,查看内容不同。
+
+4	git版本的回退
+	4.1	退一步，git reset --hard HEAD^，指针回退一步；
+	4.2	退多步V1，git reset --hard HEAD^^^^^^^^^^,多个箭号
+	4.3	退多步V2，git reset --hard HEAD~数字步数
+	4.4	穿梭穿越，git reflog获得头7位版本号，然后
+			git reset --hard 7位版本号
+
+5	git三区
+
+6	git分支
+	6.1	git branch 查看分支
+	6.2	git branch 分支名字  作用是新建分支
+	6.3	git checkout 分支名  作用是切换分支
+	6.4	git merge 目的分支   作用是将目的分之的内容合并进当前分支
+	6.5	git branch -d 分支名	作用是删除分支
+	6.6	git checkout -b 分支名	作用是新建+切换一步搞定
+
+7	第一种冲突
+	分支合并后的冲突，如何解决见VCR。
+	
+	第二种冲突
+	git本地命令和github的交互冲突，
+	push提交后的内容冲突，请先pull到本地人工干预收工合并后再push
+
+	第三种冲突TortoiseGit和TortoiseSVN是同样的操作解决
+	TortoiseGit--黄色三角感叹号---edit conflict---merge---resolve--commit--->OK
+
+	第四种冲突，Egit处理
+	有冲突了先pull，具体见Vcr
+
+
+8	TortoiseGit
+		
+
+9	EGit
+
+[branch "master"]
+    remote = origin
+    merge = refs/heads/master
+
+[remote "origin"]
+    url = git@github.com:zzyybs/换成你自己的工程.git
+    fetch = +refs/heads/*:refs/remotes/origin/*
+    push = refs/heads/master:refs/heads/master
+
+----------------------history--------------------------	
+
+git remote -v 查看远程连接地址 内容格式为
+remoteRepositoryName  remoteUrl
+
+git remote rm + remoteRepositoryName 删除远程连接
+
+git remote show  显示远程仓库名
+
+git remote add + remoteRepositoryName + remoteUrl  绑定远程连接
+
+git stash 暂存
+
+git stash list 缓存记录
+
+git stash apply stash@{}  还原
+ 
+git branch -a 查看分支
+
+git log  
+
+git reflog
+
+git branch -m oldBranchName newBranchName 重命名分支
+
+git pull remoteHostname remoteBranchName:localBranchName
+
+
+提交前 先 看一下diff
+按理说，应该先pull，将本地代码更新到最新
+
+
+git 故事卡
+
+来到一个新的地方，拿到了gitlab（类似于GitHub的东东）地址，
+打开后，看见了一个主库，主库上好多分支。但是，你是菜鸟，你并没有
+那么高的权限，怎么办，只好，从主库代码里fork一份，当做自己的远程库
+来使用。fork过来后，你可以发现（TODO）
+然后呢，拿着你的远程库的git链接，clone一份，就成了你的本地库了。
+ok，下面开始编码了，boss要求你添加某一功能，
+
+
+
+
+

@@ -1,0 +1,451 @@
+package com.pachira.dc.thread;
+
+import com.pachira.dc.dimension.CombinedDimConfigurator;
+import com.pachira.dc.dimension.DimConfigItem;
+import com.pachira.dc.common.BuildInFieldDefine;
+import com.pachira.dc.common.DimensionType;
+import com.pachira.dc.common.TaskNode;
+import com.pachira.dc.utils.CollectionUtilsExtend;
+import com.pachira.dc.utils.StringUtilsExtend;
+import com.pachira.dc.web.action.request.SeparatedNameValueList;
+import com.pachira.define.CommonError;
+import com.pachira.define.CommonErrorString;
+import com.pachira.psae.common.*;
+import com.pachira.psae.thread.SafeExitRunnableAdaptor;
+import com.pachira.shared.configurator.DynaValue;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.web.bind.annotation.RequestMethod;
+
+import javax.inject.Inject;
+import javax.inject.Named;
+import javax.inject.Singleton;
+import java.io.File;
+import java.security.InvalidParameterException;
+import java.util.*;
+import java.util.concurrent.locks.ReentrantLock;
+
+/**
+ * 推送任务信息的工作线程，对一批数据进行处理
+ * 并推送到批次处理事件的回调URL中
+ *
+ * @author liuyusong
+ * @version 1.0
+ * @date 2016.2.25
+ */
+@Named
+@Singleton
+public class TaskPostThread extends SafeExitRunnableAdaptor {
+    private Log log = LogFactory.getLog(TaskPostThread.class);
+
+    private CombinedDimConfigurator combinedDimConfigurator;
+
+    private String remoteProcessorAddress;
+    private ProcessedTaskHolder processedTaskHolder;
+
+    private static final ReentrantLock lock = new ReentrantLock();
+    private String taskDirName = "task";
+    private String subDirName = "sub";
+    private File archiveFolder;
+
+    /**
+     * 向BC发送数据失败时的重试次数，负数表示无限重试
+     */
+    private int postRetryTimes = 1;
+    private int postRetryInterval = 1;
+
+    private boolean shouldPostTask = true;
+
+    private HttpRequestUtils httpRequestUtils;
+
+    // 是否丢弃失败的任务
+    private boolean dropFailedTask = true;
+
+    // 等待时间，单位分钟
+    // 和下面的batchSize会一起使用
+    // 要么达到batchSize或者超市等待到了指定时间
+    // 都会发送一个批次出去，这样能够避免批次过小，或者空现实不停等待数据
+    private int waitMinutes = 10;
+    private int batchSize = 5000;
+
+    @Override
+    public void run() {
+        // 检查一下BC的地址是否正确
+        if (StringUtils.isAbsEmpty(remoteProcessorAddress)) {
+            throw new InvalidParameterException(
+                    String.format("invalid remoteProcessorAddress [%s]", remoteProcessorAddress));
+        }
+
+        int waitMs = 0;
+
+        List<TaskNode> batchTaskList = new ArrayList<>();
+        while (!isExit()) {
+            if (waitMs < waitMinutes * 60 * 1000 &&
+                    processedTaskHolder.totalSize() < batchSize) {
+                log.trace("TaskPostThread | combine result size " + processedTaskHolder.totalSize());
+
+                ThreadUtils.sleep(100);
+                waitMs += 100;
+                continue;
+            }
+
+            // 重置超时计数器
+            waitMs = 0;
+
+            batchTaskList.clear();
+            processedTaskHolder.peekInDate(batchSize, batchTaskList);
+            if (CollectionUtils.isAbsEmpty(batchTaskList)) {
+                // 没取出来数据，应该是被其他线程发出去了，这里直接跳过
+                ThreadUtils.sleep(10);
+                continue;
+            }
+
+            try {
+                // 将失败的数据剔除掉
+                if (dropFailedTask) {
+                    filterFailedTask(batchTaskList);
+                }
+
+                if (batchTaskList.size() == 0) {
+                    log.debug("all batch task is filter for failing");
+                    continue;
+                }
+                ProcessedBatchMessage message = warpInMessage(batchTaskList,
+                        (String) batchTaskList.get(0).getTaskDimMap().get(BuildInFieldDefine.DATA_TYPE));
+                // 这里添加一个开关，设置是否要推送，调试时可以关闭推送功能
+                // 消息发送
+                if (shouldPostTask) {
+                    boolean isSuccess = true;
+                    for (int i = 0; postRetryTimes < 0 || i < postRetryTimes; ++i) {
+                        //isSuccess = sendMessage(message);
+                        for(int j=0;j<1000*1000;j++);
+                        if (isSuccess) {
+                            // 处理归档文件
+                            String batchDate = message.getDate();
+                            disposeArchiveFile(message.getTask(), batchDate, taskDirName);
+                            disposeArchiveFile(message.getSubData(), batchDate, subDirName);
+                            // 更改已完成的流水号的状态
+                            disposeScheduleFile(batchTaskList);
+                            break;
+                        }
+
+                        log.warn("cannot send batch to remote, retry " + (i + 1));
+                        ThreadUtils.sleep(postRetryInterval * 1000);
+                    }
+
+                    log.info(String.format("send message, batch = %s, count = %d",
+                            message.getBatchID(), batchTaskList.size()));
+                } else {
+                    log.info(String.format("batch processed, batch = %s, count = %d",
+                            message.getBatchID(), batchTaskList.size()));
+                }
+            } catch (Exception e) {
+                log.fatal("cannot post batch message", e);
+            }
+        }
+    }
+
+    /**
+     * 更改已完成的任务流水号的状态
+     *
+     * @param batchTaskList
+     */
+    private void disposeScheduleFile(List<TaskNode> batchTaskList) {
+        Iterator<TaskNode> it = batchTaskList.iterator();
+        String dir = (String) batchTaskList.get(0).getTaskDimMap().get(BuildInFieldDefine.DIM_BASE_DIR);
+        //加锁，防止探测线程在该阶段修改lst文件
+        try {
+            lock.lock();
+            File taskScheduleFile = new File(dir, "flag.schedule");
+            if (taskScheduleFile.exists() && taskScheduleFile.isFile()) {
+                List<String> taskIdNameLst = FileUtils.loadTextInLineFromFile(taskScheduleFile, "UTF-8");
+                CollectionUtilsExtend.tirmList(taskIdNameLst);
+                if (!CollectionUtils.isAbsEmpty(taskIdNameLst)) {
+                    int remove = 0;
+                    for (; it.hasNext(); ) {
+                        TaskNode taskNode = it.next();
+                        String taskIdName = (String) taskNode.getTaskDimMap().get("任务流水号");
+                        String flag = "|" + taskIdName + "|0";
+                        for (ListIterator<String> its = taskIdNameLst.listIterator(); its.hasNext(); ) {
+                            String next = its.next();
+                            if (StringUtils.isAbsEmpty(next)) {
+                                continue;
+                            }
+                            if (next.endsWith(flag)) {
+                                its.remove();
+                                String goal = next.substring(0, next.length() - 1) + "1";
+                                its.add(goal);
+                                remove++;
+                                break;
+                            }
+                        }
+                    }
+                    if (remove > 0) {
+                        //不是追加，先删除在写入
+                        String content = StringUtilsExtend.listToString(taskIdNameLst, System.lineSeparator());
+                        content = (content == null ? "" : content) + System.lineSeparator();
+                        FileUtils.writeToFile(taskScheduleFile, content, "UTF-8");
+                    }
+                }
+
+            }
+        } catch (Exception e) {
+            log.warn("update schedule file failed");
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    /**
+     * 将归档文件重命名为zip文件
+     *
+     * @param data
+     * @param batchDate
+     * @param dirName
+     */
+    private void disposeArchiveFile(SeparatedNameValueList data, String batchDate, String dirName) {
+        int cursor = 0;
+        //更改taskdir下的文件名
+        List<String> nameList = data.getNameList();
+        for (; cursor < nameList.size(); cursor++) {
+            if (BuildInFieldDefine.ID.equals(nameList.get(cursor))) {
+                break;
+            }
+        }
+        List<List<Object>> valueList = data.getValueList();
+        for (Iterator<List<Object>> it = valueList.iterator(); it.hasNext(); ) {
+            String id = (String) it.next().get(cursor);
+            renameFile(batchDate, dirName, id);
+        }
+    }
+
+    /**
+     * 重命名文件
+     *
+     * @param batchDate
+     * @param dirName
+     * @param id
+     */
+    private boolean renameFile(String batchDate, String dirName, String id) {
+        String from = archiveFolder + StringUtils.normalizePath(
+                String.format("/%s/%s/%s.tmp", batchDate, dirName, id));
+        String normal_from = StringUtils.normalizePath(from);
+        String to = normal_from.replace(".tmp", ".zip");
+        try {
+            FileUtils.rename(normal_from, to);
+            return true;
+        } catch (Exception e) {
+            log.warn(String.format("TaskPostThread | the file  which in %s rename fail", normal_from), e);
+            return false;
+        }
+
+    }
+
+    /**
+     * 将这个批次的数据封装为API定义的数据格式
+     *
+     * @param taskList 原始任务列表
+     * @return 封装完成的数据
+     */
+    private ProcessedBatchMessage warpInMessage(List<TaskNode> taskList, String subType) {
+        ProcessedBatchMessage message = new ProcessedBatchMessage();
+
+        // 设置此次批次ID
+        message.setBatchID(UniqueCodeUtils.generateCodeWithDate(taskList.get(0).getBatchDate()));
+        message.setDate(StringUtils.formatDate(taskList.get(0).getBatchDate()));
+        message.setType((String) taskList.get(0).getTaskDimMap().get(BuildInFieldDefine.DATA_TYPE));
+        message.setTotalCount(taskList.size());
+
+        List<String> taskNameList = message.getTask().getNameList();
+        List<List<Object>> taskValueList = message.getTask().getValueList();
+        List<String> subNameList = message.getSubData().getNameList();
+        List<List<Object>> subValueList = message.getSubData().getValueList();
+
+        // 取出所有的维度配置，然后按照配置顺序一一导出
+        // 组装任务维度的nameList
+        Map<String, DimConfigItem> taskDimConfigList =
+                combinedDimConfigurator.enumCombinedDim(DimensionType.TASK);
+        for (DimConfigItem configItem : taskDimConfigList.values()) {
+            // 不允许推送的维度则跳过
+            if (!configItem.isPost()) {
+                continue;
+            }
+
+            taskNameList.add(configItem.getName());
+        }
+
+        // 组装sub维度的nameList
+        Map<String, DimConfigItem> subDimConfigList =
+                combinedDimConfigurator.enumCombinedDim(subType);
+        for (DimConfigItem configItem : subDimConfigList.values()) {
+            // 不允许推送的维度则跳过
+            if (!configItem.isPost()) {
+                continue;
+            }
+
+            subNameList.add(configItem.getName());
+        }
+
+        for (TaskNode node : taskList) {
+            List<Object> oneTaskValueList = new ArrayList<>();
+            for (String taskDimName : taskNameList) {
+                //增加维度空值过滤，保证推送json结构正确
+                if (node.getTaskDimMap().get(taskDimName) == null
+                        || "".equals(node.getTaskDimMap().get(taskDimName))) {
+                    if (taskDimConfigList.get(taskDimName).isMultiValue()) {
+                        node.getTaskDimMap().put(taskDimName, new ArrayList<>());
+                    } else {
+                        node.getTaskDimMap().put(taskDimName, null);
+                    }
+                }
+                // dc支持的类型中:int long float double string date
+                // 只有date类型需要进行转换,因为其他类型json直接原生支持
+                // date类型需要转换为日期字符串,以便于统一处理
+                oneTaskValueList.add(filterDateValue(node.getTaskDimMap().get(taskDimName)));
+            }
+            taskValueList.add(oneTaskValueList);
+
+            for (Map<String, Object> subMap : node.getSubList()) {
+                List<Object> oneSubValueList = new ArrayList<>();
+                for (String subDimName : subNameList) {
+                    //增加维度空值过滤，保证推送json结构正确
+                    if (subMap.get(subDimName) == null
+                            || "".equals(subMap.get(subDimName))) {
+                        if (subDimConfigList.get(subDimName).isMultiValue()) {
+                            subMap.put(subDimName, new ArrayList<>());
+                        } else {
+                            subMap.put(subDimName, null);
+                        }
+                    }
+                    oneSubValueList.add(filterDateValue(subMap.get(subDimName)));
+                }
+
+                subValueList.add(oneSubValueList);
+            }
+        }
+
+        return message;
+    }
+
+    private Object filterDateValue(Object value) {
+        if (value instanceof Date) {
+            return StringUtils.formatDateTime((Date) value);
+        } else if (value instanceof List && !CollectionUtils.isAbsEmpty(value)) {
+            List dateList = (List) value;
+            for (int i = 0; i < dateList.size(); ++i) {
+                if (dateList.get(i) instanceof Date) {
+                    dateList.set(i, StringUtils.formatDateTime((Date) dateList.get(i)));
+                }
+            }
+
+            return value;
+        } else {
+            return value;
+        }
+    }
+
+    /**
+     * 将TD关联完成的任务和语音发送给BC服务
+     *
+     * @param message 一个批次的任务信息
+     * @return 信息发送结果
+     */
+    private boolean sendMessage(ProcessedBatchMessage message) {
+        try {
+            Map response = httpRequestUtils.requestForObject(
+                    RequestMethod.POST, remoteProcessorAddress, message, Map.class);
+
+            if (response != null && response.containsKey("functionResult")
+                    && CommonErrorString.SUCCESS.equals(response.get("functionResult"))) {
+                return true;
+            }
+
+            return false;
+        } catch (Exception e) {
+            log.warn("TaskPostThread | ", e);
+            return false;
+        }
+    }
+
+    /**
+     * 将失败的任务清理出去
+     */
+    private void filterFailedTask(List<TaskNode> taskList) {
+        for (Iterator<TaskNode> it = taskList.iterator(); it.hasNext(); ) {
+            TaskNode taskNode = it.next();
+
+            // 如果任务这里已经失败
+            // 并且需要丢弃失败的任务，则后面不必再处理
+            int processedResult = (int) taskNode.getTaskDimMap().get(
+                    BuildInFieldDefine.PROCESS_RESULT);
+            if (processedResult != CommonError.SUCCESS) {
+                it.remove();
+            }
+        }
+    }
+
+    @DynaValue("DataCenter.TaskPost.IdleTimeout")
+    public void setIdleTimeout(int idleTimeout) {
+        this.httpRequestUtils.changeIdleTimeout(idleTimeout * 60 * 1000);
+    }
+
+    @DynaValue("DataCenter.TaskPost.WaitMinutes")
+    public void setWaitMinutes(int waitMinutes) {
+        this.waitMinutes = waitMinutes;
+    }
+
+    @DynaValue("DataCenter.TaskPost.BatchSize")
+    public void setBatchSize(int batchSize) {
+        this.batchSize = batchSize;
+    }
+
+    @DynaValue("DataCenter.RemoteProcessor.RESTful.Address")
+    public void setRemoteProcessorAddress(String remoteProcessorAddress) {
+        this.remoteProcessorAddress = remoteProcessorAddress;
+    }
+
+    @DynaValue("DataCenter.RemoteProcessor.PostRetryTimes")
+    public void setPostRetryTimes(int postRetryTimes) {
+        this.postRetryTimes = postRetryTimes;
+    }
+
+    @DynaValue("DataCenter.RemoteProcessor.PostRetryInterval")
+    public void setPostRetryInterval(int postRetryInterval) {
+        if (postRetryInterval <= 0) {
+            throw new InvalidParameterException("post retry interval must be greater than 0");
+        }
+
+        this.postRetryInterval = postRetryInterval;
+    }
+
+    @DynaValue("DataCenter.TaskPost.Open")
+    public void setShouldPostTask(boolean shouldPostTask) {
+        this.shouldPostTask = shouldPostTask;
+    }
+
+    @DynaValue("DataCenter.TaskPost.DropFailedTask")
+    public void setDropFailedTask(boolean dropFailedTask) {
+        this.dropFailedTask = dropFailedTask;
+    }
+
+    @Value("${DataCenter.ArchiveFolder:data/dc}")
+    public void setArchiveFolder(File archiveFolder) {
+        this.archiveFolder = archiveFolder;
+    }
+
+    @Inject
+    public void setProcessedTaskHolder(ProcessedTaskHolder processedTaskHolder) {
+        this.processedTaskHolder = processedTaskHolder;
+    }
+
+    @Inject
+    public void setHttpRequestUtils(HttpRequestUtils httpRequestUtils) {
+        this.httpRequestUtils = httpRequestUtils;
+    }
+
+    @Inject
+    public void setCombinedDimConfigurator(CombinedDimConfigurator combinedDimConfigurator) {
+        this.combinedDimConfigurator = combinedDimConfigurator;
+    }
+}

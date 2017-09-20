@@ -1,0 +1,204 @@
+ALT+回车 导入包,自动修正
+
+CTRL+N   查找类
+
+CTRL+SHIFT+N 查找文件
+
+CTRL+ALT+L  格式化代码
+
+CTRL+ALT+O 优化导入的类和包
+
+ALT+INSERT 生成代码(如GET,SET方法,构造函数等)
+
+CTRL+E或者ALT+SHIFT+C  最近更改的代码
+
+CTRL+R 替换文本
+
+CTRL+F 查找文本
+
+CTRL+SHIFT+SPACE 自动补全代码
+
+CTRL+空格 代码提示
+
+CTRL+ALT+SPACE 类名或接口名提示
+
+CTRL+P 方法参数提示
+
+CTRL+SHIFT+ALT+N 查找类中的方法或变量
+
+ALT+SHIFT+C 对比最近修改的代码
+
+SHIFT+F6  重构-重命名
+
+CTRL+SHIFT+先上键
+
+CTRL+X 删除行
+
+CTRL+D 复制行
+
+CTRL+/ 或 CTRL+SHIFT+/  注释（// 或者/*...*/ ）
+
+CTRL+J  自动代码
+
+CTRL+E 最近打开的文件
+
+CTRL+H 显示类结构图
+
+CTRL+Q 显示注释文档
+
+ALT+F1 查找代码所在位置
+
+ALT+1 快速打开或隐藏工程面板
+
+CTRL+ALT+ LEFT/RIGHT 返回至上次浏览的位置
+
+ALT+ LEFT/RIGHT 切换代码视图
+
+ALT+ UP/DOWN 在方法间快速移动定位
+
+CTRL+SHIFT+UP/DOWN 代码向上/下移动。
+
+F2 或SHIFT+F2 高亮错误或警告快速定位
+
+代码标签输入完成后，按TAB，生成代码。
+
+选中文本，按CTRL+SHIFT+F7 ，高亮显示所有该文本，按ESC高亮消失。
+
+CTRL+W 选中代码，连续按会有其他效果
+
+选中文本，按ALT+F3 ，逐个往下查找相同文本，并高亮显示。
+
+CTRL+UP/DOWN 光标跳转到第一行或最后一行下
+
+CTRL+B 快速打开光标处的类或方法 
+
+INTELLIJ IDEA最常用快捷键
+
+1.CTRL＋E，可以显示最近编辑的文件列表
+
+2.SHIFT＋CLICK可以关闭文件
+
+3.CTRL＋[或]可以跳到大括号的开头结尾
+
+4.CTRL＋SHIFT＋BACKSPACE可以跳转到上次编辑的地方
+
+5.CTRL＋F12，可以显示当前文件的结构
+
+6.CTRL＋F7可以查询当前元素在当前文件中的引用，然后按F3可以选择
+
+7.CTRL＋N，可以快速打开类
+
+8.CTRL＋SHIFT＋N，可以快速打开文件
+
+9.ALT＋Q可以看到当前方法的声明
+
+10.CTRL＋W可以选择单词继而语句继而行继而函数
+
+11.ALT＋F1可以将正在编辑的元素在各个面板中定位
+
+12.CTRL＋P，可以显示参数信息
+
+13.CTRL＋SHIFT＋INSERT可以选择剪贴板内容并插入
+
+14.ALT＋INSERT可以生成构造器/GETTER/SETTER等
+
+15.CTRL＋ALT＋V 可以引入变量。例如把括号内的SQL赋成一个变量
+
+16.CTRL＋ALT＋T可以把代码包在一块内，例如TRY/CATCH
+
+17.ALT＋UP AND ALT＋DOWN可在方法间快速移动
+
+1. IDEA内存优化
+
+因机器本身的配置而配置：
+
+\INTELLIJ IDEA 8\BIN\IDEA.EXE.VMOPTIONS  
+-----------------------------------------  
+-XMS64M  
+-XMX256M  
+-XX:MAXPERMSIZE=92M  
+-EA  
+-SERVER  
+-DSUN.AWT.KEEPWORKINGSETONMINIMIZE=TRUE
+
+2. 查询快捷键
+
+CTRL+N   查找类 
+CTRL+SHIFT+N  查找文件 
+CTRL+SHIFT+ALT+N 查找类中的方法或变量 
+CIRL+B   找变量的来源 
+CTRL+ALT+B  找所有的子类 
+CTRL+SHIFT+B  找变量的类 
+CTRL+G   定位行 
+CTRL+F   在当前窗口查找文本 
+CTRL+SHIFT+F  在指定窗口查找文本 
+CTRL+R   在 当前窗口替换文本 
+CTRL+SHIFT+R  在指定窗口替换文本 
+ALT+SHIFT+C  查找修改的文件 
+CTRL+E   最近打开的文件 
+F3   向下查找关键字出现位置 
+SHIFT+F3  向上一个关键字出现位置 
+F4   查找变量来源 
+CTRL+ALT+F7  选中的字符查找工程出现的地方 
+CTRL+SHIFT+O  弹出显示查找内容
+
+3. 自动代码
+
+ALT+回车  导入包,自动修正 
+CTRL+ALT+L  格式化代码 
+CTRL+ALT+I  自动缩进 
+CTRL+ALT+O  优化导入的类和包 
+ALT+INSERT  生成代码(如GET,SET方法,构造函数等) 
+CTRL+E 最近更改的代码 
+CTRL+SHIFT+SPACE 自动补全代码 
+CTRL+空格  代码提示 
+CTRL+ALT+SPACE  类名或接口名提示 
+CTRL+P   方法参数提示 
+CTRL+J   自动代码 
+CTRL+ALT+T  把选中的代码放在 TRY{} IF{} ELSE{} 里
+
+4. 复制快捷方式
+
+CTRL+D   复制行 
+CTRL+X   剪切,删除行  
+
+5. 其他快捷方式
+
+
+CTRL+Z   倒退 
+CTRL+SHIFT+Z  向前 
+CTRL+ALT+F12  资源管理器打开文件夹 
+ALT+F1   查找文件所在目录位置 
+SHIFT+ALT+INSERT 竖编辑模式 
+CTRL+/   注释//   
+CTRL+SHIFT+/  注释/*...*/ 
+CTRL+W   选中代码，连续按会有其他效果 
+CTRL+B   快速打开光标处的类或方法 
+ALT+ ←/→  切换代码视图 
+CTRL+ALT ←/→  返回上次编辑的位置 
+ALT+ ↑/↓  在方法间快速移动定位 
+SHIFT+F6  重构-重命名 
+CTRL+H   显示类结构图 
+CTRL+Q   显示注释文档 
+ALT+1   快速打开或隐藏工程面板 
+CTRL+SHIFT+UP/DOWN 代码向上/下移动。 
+CTRL+UP/DOWN  光标跳转到第一行或最后一行下 
+ESC   光标返回编辑框 
+SHIFT+ESC  光标返回编辑框,关闭无用的窗口 
+F1   帮助千万别按,很卡! 
+CTRL+F4   非常重要下班都用
+
+CTRL+SHIFT+SPACE(NEW 后面自动提示) 
+CTRL+SHIFT+/ (注释) 
+ITAR后面TAB (FOR循环) 
+IT后面CTRL+J(很多智能代码生成) 
+ALT+INSERT(自动生成构造函数，GET,SET方法) 
+CTRL+ALT+T(自动生成TRY,CATCH) 
+ALT+ENTER(创建测试类和子类) 
+CTRL+SHIFT+BACKSPACE(最后编辑的地方) 
+CTRL+E(查看所有文件) 
+CTRL+SHIFT+V(粘贴) 
+ALT+SHIFT+C(最近变更历史) 
+CTRL+SHIFT+ENTER(智能完善代码 如 IF()) 
+CTRL+SHIFT+I(快速查看实现) 
+CTRL+SHIFT+UP/DOWN(移动行、合并选中行)

@@ -1,0 +1,21 @@
+dimension	维度		combine		结合		confidence	信任度	
+recognize	识别		batch		批次		duration	持续化通话时长
+dummy		假的		cursor		游标		mix		混合
+optimus		平台		processed	加工		consumption	消费，消耗
+archive		存档		original	原始的		license		执照
+spectrum	系列，谱	reactor		反应堆		digit		数字
+task		任务		extract		提取		raw		原始的，未加工的	
+text		文本		punctuation	标点		fatal		致命的
+speech		语音		emotion		情绪		specify		指定
+detect		探测		silence		静音		manipulation	操纵操作
+redundant	多余的		reject		拒绝		dynamic		动态的
+process		进程		absent		缺席		invalid		无效的
+default		默认值		prematurally	过早的		master		主人
+priority	优先级		stage		阶段		resumable	可恢复的
+shadow		影子		modifiable	修改		panic		惊慌
+caret		插入符		anonymous	匿名		coverage	覆盖
+hold		持有者		volume		容量		
+
+												
+
+											

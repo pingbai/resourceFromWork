@@ -1,0 +1,24 @@
+1、构造函数初始化，变量默认初始化
+   回调函数： 可以在参数中实现内部类，在方法中调用该类的方法
+2、linux 
+	wget 下载阻塞	vim /etc/wgetrc --> 将use_proxy = on 的注释去掉，并将on 改为 off
+
+	sudo  在没有管理员权限时，Only usable by root，命令前 应 加上 sudo + commond.
+
+	vim 指令 ，输入 i 进入编辑模式 ， esc 退出编辑模式，:q! 强退 :wq 保存退出
+
+	netstat -tunlp 查看进程端口号占用情况
+
+	kill -9 processNum 杀死该进程
+
+	tailf	查看日志 
+
+	sudo su  权限问题
+
+	tar -zxvf 解压
+
+	ps aux | grep 服务 查看当前服务进程
+
+
+
+
