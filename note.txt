@@ -20,5 +20,7 @@
 	ps aux | grep 服务 查看当前服务进程
 
 
+GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' IDENTIFIED BY 'yourPwd' WITH GRANT OPTION;
+
 
 

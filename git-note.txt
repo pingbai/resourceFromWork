@@ -85,6 +85,10 @@ git branch -m oldBranchName newBranchName 重命名分支
 
 git pull remoteHostname remoteBranchName:localBranchName
 
+git fetch remoteHostname remoteBranchName:localBranchName 将远程仓库clone到本地
+
+
+
 
 提交前 先 看一下diff
 按理说，应该先pull，将本地代码更新到最新
@@ -107,6 +111,15 @@ ok，下面开始编码了，boss要求你添加某一功能，
 即：本地两个分支对远程一个分支进行修改，则，后提交的分支需要先pull一下
 
 另外 切换到另一个已存在的分支时先pull一下
+
+
+应该是从远程主库clone代码，然后再操作
+
+
+命令来了，让你修改4.1分支上的bug 嗯，是这样玩的，先从远程库fetch 4.1分支到本地，然后再从本地
+checkout 一个分支进行开发，当然，如果本地分支已经存在，那么首先要更新一下才能checkout一个新分支
+进行开发
+提交前，先查看远程是否有更新，有的话，
 
 
 
